@@ -2,7 +2,7 @@ package main
 
 import (
 	"MINE/miner/handlers"
-	"MINE/passiveIncome"
+	"MINE/miner/passiveIncome"
 	"context"
 	"net/http"
 	"sync"
