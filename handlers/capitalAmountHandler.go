@@ -1,13 +1,13 @@
 package handlers
 
 import (
+	"MINE/enterprice"
 	"fmt"
 	"net/http"
-	"sync/atomic"
 )
 
-func CapitalAmountHandler(w http.ResponseWriter, r *http.Request, coalCapital *atomic.Int64) {
+func CapitalAmountHandler(w http.ResponseWriter, r *http.Request, e *enterprice.Enterprice) {
 	w.WriteHeader(http.StatusOK)
-	msg := fmt.Sprintf("Current amount of coal is %d", coalCapital.Load())
+	msg := fmt.Sprintf("Current amount of coal is %d", e.CapitalAmount())
 	w.Write([]byte(msg))
 }
