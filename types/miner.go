@@ -2,6 +2,7 @@ package types
 
 import (
 	"context"
+	"sync/atomic"
 	"time"
 )
 
@@ -12,16 +13,13 @@ type Miner interface {
 
 type MinerInfo struct {
 	Price       int
-	Energy      int
-	Income      int
-	BreakTime   int
-	IncomeBonus int
+	EnergyLeft  int
 	MinerType   string
 }
 
 type defaultMiner struct {
 	price       int
-	energy      int
+	energy      atomic.Int64
 	income      int
 	breakTime   int
 	incomeBonus int
@@ -32,7 +30,7 @@ func (m *defaultMiner) Run(ctx context.Context) <-chan int {
 	ch := make(chan int)
 	go func() {
 		defer close(ch)
-		for i := 1; i <= m.energy; i++ {
+		for m.energy.Load() > 0 {
 			select {
 			case <-ctx.Done():
 				return
@@ -41,50 +39,51 @@ func (m *defaultMiner) Run(ctx context.Context) <-chan int {
 				if m.incomeBonus != 0 {
 					m.income += m.incomeBonus
 				}
+				m.energy.Add(-1)
 			}
 		}
 	}()
 	return ch
 }
 
-func (m defaultMiner) Info() MinerInfo {
+func (m *defaultMiner) Info() MinerInfo {
 	return MinerInfo{
 		Price:       m.price,
-		Energy:      m.energy,
-		Income:      m.income,
-		BreakTime:   m.breakTime,
-		IncomeBonus: m.incomeBonus,
+		EnergyLeft:  int(m.energy.Load()),
 		MinerType:   m.minerType,
 	}
 }
 
 func NewSmallMiner() Miner {
-	return &defaultMiner{
+	m := &defaultMiner{
 		price:     5,
-		energy:    30,
 		income:    1,
 		breakTime: 3,
 		minerType: "small",
 	}
+	m.energy.Store(30)
+	return m
 }
 
 func NewNormalMiner() Miner {
-	return &defaultMiner{
+	m := &defaultMiner{
 		price:     50,
-		energy:    45,
 		income:    3,
 		breakTime: 2,
 		minerType: "normal",
 	}
+	m.energy.Store(45)
+	return m
 }
 
 func NewStrongMiner() Miner {
-	return &defaultMiner{
+	m := &defaultMiner{
 		price:       450,
-		energy:      60,
 		income:      10,
 		breakTime:   1,
 		incomeBonus: 3,
 		minerType:   "strong",
 	}
+	m.energy.Store(60)
+	return m
 }

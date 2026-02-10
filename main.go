@@ -15,7 +15,15 @@ func main() {
 	})
 
 	http.HandleFunc("/capital", func(w http.ResponseWriter, r *http.Request) {
-		handlers.CapitalAmountHandler(w, r, e)
+		handlers.CapitalHandler(w, r, e)
+	})
+
+	http.HandleFunc("/miners/active", func(w http.ResponseWriter, r *http.Request) {
+		handlers.ActiveMinerHanlde(w, r, e)
+	})
+
+	http.HandleFunc("/miners/history", func(w http.ResponseWriter, r *http.Request) {
+		handlers.HistoryMinerHanlde(w, r, e)
 	})
 
 	http.ListenAndServe(":9091", nil)

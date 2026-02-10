@@ -11,6 +11,11 @@ import (
 
 
 func MinersHandle(w http.ResponseWriter, r *http.Request, e *enterprice.Enterprice) {
+	if r.Method != http.MethodPost{
+		http.Error(w, "Method not allowed!", http.StatusMethodNotAllowed)
+		return
+	}
+
 	mHttp := types.HttpMiner{}
 	if err := json.NewDecoder(io.Reader(r.Body)).Decode(&mHttp); err != nil {
 		fmt.Println("err", err)

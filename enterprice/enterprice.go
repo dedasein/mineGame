@@ -13,20 +13,27 @@ import (
 type Enterprice struct {
 	coalCapital atomic.Int64
 
-	ctx context.Context
+	ctx    context.Context
 	cancel context.CancelFunc
-	wg sync.WaitGroup
+	wg     sync.WaitGroup
+	mtx    sync.Mutex
+
+	minerId       atomic.Int64
+	activeMiners  map[int64]types.Miner
+	minersHistory map[int64]types.Miner
 }
 
-func NewEterprice() *Enterprice{
+func NewEterprice() *Enterprice {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &Enterprice{
-		ctx: ctx,
-		cancel: cancel,
+		ctx:           ctx,
+		cancel:        cancel,
+		activeMiners:  make(map[int64]types.Miner),
+		minersHistory: make(map[int64]types.Miner),
 	}
 }
- 
+
 func (e *Enterprice) HireMiner(mHttp *types.HttpMiner) error {
 	miners := map[string]func() types.Miner{
 		"small":  types.NewSmallMiner,
@@ -39,11 +46,13 @@ func (e *Enterprice) HireMiner(mHttp *types.HttpMiner) error {
 	}
 
 	m := minerFunc()
-	if e.coalCapital.Load() < int64(m.Info().Price*mHttp.Count) {
-		return errors.New(fmt.Sprintf("Not enough coal! Current amount of coal is %d", e.coalCapital.Load()))
-	} else {
-		e.coalCapital.Add(-int64(m.Info().Price*mHttp.Count))
+	totalPrice := int64(m.Info().Price * mHttp.Count)
+	
+	if e.coalCapital.Load() < totalPrice {
+		return fmt.Errorf("Not enough coal! Current amount of coal is %d, but need %d", e.coalCapital.Load(), totalPrice)
 	}
+	
+	e.coalCapital.Add(-totalPrice)
 
 	if mHttp.Count > 1 {
 		fmt.Printf("Шахтеры %s начали работу в количестве %d\n", m.Info().MinerType, mHttp.Count)
@@ -52,14 +61,8 @@ func (e *Enterprice) HireMiner(mHttp *types.HttpMiner) error {
 	}
 
 	for i := 0; i < mHttp.Count; i++ {
-		e.wg.Add(1)
-		go func() {
-			defer e.wg.Done()
-			coal := m.Run(e.ctx)
-			for v := range coal {
-				e.coalCapital.Add(int64(v))
-			}
-		}()
+		m := minerFunc()
+		e.addMiner(m)
 	}
 
 	go func() {
@@ -70,7 +73,7 @@ func (e *Enterprice) HireMiner(mHttp *types.HttpMiner) error {
 			fmt.Printf("Шахтер %s закончил работу\n", m.Info().MinerType)
 		}
 	}()
-	
+
 	return nil
 }
 
@@ -88,8 +91,29 @@ func (e *Enterprice) PassiveIncome() {
 	}
 }
 
+func (e *Enterprice) addMiner(m types.Miner) {
+	e.minerId.Add(1)
+	currentID := e.minerId.Load()
+	e.mtx.Lock()
+	e.activeMiners[currentID] = m
+	e.minersHistory[currentID] = m
+	e.mtx.Unlock()
 
-func (e *Enterprice) CapitalAmount() int64{
+	e.wg.Add(1)
+	go func() {
+		defer e.wg.Done()
+		coalCh := m.Run(e.ctx)
+		for v := range coalCh {
+			e.coalCapital.Add(int64(v))
+		}
+		e.mtx.Lock()
+		delete(e.activeMiners, currentID)
+		e.mtx.Unlock()
+	}()
+
+}
+
+func (e *Enterprice) CapitalAmount() int64 {
 	return e.coalCapital.Load()
 }
 
@@ -97,3 +121,10 @@ func (e *Enterprice) Cancel() {
 	e.cancel()
 }
 
+func (e *Enterprice) PrintActiveMiners() map[int64]types.Miner {
+	return e.activeMiners
+}
+
+func (e *Enterprice) PrintHistoryMiners() map[int64]types.Miner {
+	return e.minersHistory
+}
