@@ -26,3 +26,6 @@ func ActiveMinerHanlde(w http.ResponseWriter, r *http.Request, e *enterprice.Ent
 
 	}
 }
+
+
+//- Можно получить список всех работающих в данный момент, отфильтровав по классу query параметры!

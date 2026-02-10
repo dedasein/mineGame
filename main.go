@@ -26,5 +26,7 @@ func main() {
 		handlers.HistoryMinerHanlde(w, r, e)
 	})
 
+	http.HandleFunc("/miners/price", handlers.MinersPriceHanlde)
+
 	http.ListenAndServe(":9091", nil)
 }
