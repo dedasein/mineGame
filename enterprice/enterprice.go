@@ -18,22 +18,25 @@ type Enterprice struct {
 	wg     sync.WaitGroup
 	mtx    sync.Mutex
 
-	minerId       atomic.Int64
-	activeMiners  map[int64]types.Miner
-	minersHistory map[int64]types.Miner
+	minerId            atomic.Int64
+	activeMiners       map[int64]types.Miner
+	minersHistory      map[int64]types.Miner
+	pursharedEuqipment []*types.Equipment
 }
 
 func NewEterprice() *Enterprice {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &Enterprice{
-		ctx:           ctx,
-		cancel:        cancel,
-		activeMiners:  make(map[int64]types.Miner),
-		minersHistory: make(map[int64]types.Miner),
+		ctx:                ctx,
+		cancel:             cancel,
+		activeMiners:       make(map[int64]types.Miner),
+		minersHistory:      make(map[int64]types.Miner),
+		pursharedEuqipment: make([]*types.Equipment, 0),
 	}
 }
 
+// Нанять шахтера(ов)
 func (e *Enterprice) HireMiner(mHttp *types.HttpMiner) error {
 	miners := map[string]func() types.Miner{
 		"small":  types.NewSmallMiner,
@@ -47,11 +50,12 @@ func (e *Enterprice) HireMiner(mHttp *types.HttpMiner) error {
 
 	m := minerFunc()
 	totalPrice := int64(m.Info().Price * mHttp.Count)
-	
+
+	//Проверка достаточности угля
 	if e.coalCapital.Load() < totalPrice {
 		return fmt.Errorf("Not enough coal! Current amount of coal is %d, but need %d", e.coalCapital.Load(), totalPrice)
 	}
-	
+
 	e.coalCapital.Add(-totalPrice)
 
 	if mHttp.Count > 1 {
@@ -77,6 +81,7 @@ func (e *Enterprice) HireMiner(mHttp *types.HttpMiner) error {
 	return nil
 }
 
+// Пассивный доход предприятия
 func (e *Enterprice) PassiveIncome() {
 	for {
 		select {
@@ -91,6 +96,7 @@ func (e *Enterprice) PassiveIncome() {
 	}
 }
 
+// Добавления шахтера в историю
 func (e *Enterprice) addMiner(m types.Miner) {
 	e.minerId.Add(1)
 	currentID := e.minerId.Load()
@@ -113,18 +119,62 @@ func (e *Enterprice) addMiner(m types.Miner) {
 
 }
 
+// Покупка оборудования
+func (e *Enterprice) PurshareEquipment(s string) error {
+	equipment := []*types.Equipment{types.NewPickaxes(), types.NewVentilation(), types.NewCars()}
+
+	//Проверка уникальности
+	for i := range equipment {
+		equipmentName, equipmentPrice := equipment[i].GetData()
+		if s == equipmentName {
+			for _, existingEquip := range e.pursharedEuqipment {
+				existingName, _ := existingEquip.GetData()
+				if existingName == equipmentName {
+					return fmt.Errorf("Equipment '%s' has already been purchased", equipmentName)
+				}
+			}
+
+			//Проверка достаточности угля для покупки
+			if e.coalCapital.Load() >= int64(equipmentPrice) {
+				e.coalCapital.Add(-int64(equipmentPrice))
+				e.pursharedEuqipment = append(e.pursharedEuqipment, equipment[i])
+
+				//Если длины одинаковые - завершаем игру
+				if len(e.pursharedEuqipment) == len(equipment) {
+					e.Cancel()
+					fmt.Println("All the equipment has been purchased, and the enterprice has been shut down ")
+					return nil
+				}
+				return nil
+			} else {
+				return fmt.Errorf("Not enough coal! Current amount of coal is %d, but need %d", e.coalCapital.Load(), equipmentPrice)
+			}
+		}
+	}
+	return fmt.Errorf("There is no such equipment. Available to purshare: ")
+}
+
+// Текущее кол-во угля
 func (e *Enterprice) CapitalAmount() int64 {
 	return e.coalCapital.Load()
 }
 
+// Ручная остановка
 func (e *Enterprice) Cancel() {
 	e.cancel()
 }
 
+// Запущенные в данный момент шахтеры
 func (e *Enterprice) PrintActiveMiners() map[int64]types.Miner {
 	return e.activeMiners
 }
 
+// Все когда-либо приобретенные шахтеры
 func (e *Enterprice) PrintHistoryMiners() map[int64]types.Miner {
 	return e.minersHistory
+}
+
+// УДАЛИТЬ
+func (e *Enterprice) CheatCoal() {
+	e.coalCapital.Store(1_000_000)
 }

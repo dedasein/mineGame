@@ -26,7 +26,20 @@ func main() {
 		handlers.HistoryMinerHanlde(w, r, e)
 	})
 
+	http.HandleFunc("/equipment", func(w http.ResponseWriter, r *http.Request) {
+		handlers.PurshareEquipmentHandle(w, r, e)
+	})
+
 	http.HandleFunc("/miners/price", handlers.MinersPriceHanlde)
+
+	http.HandleFunc("/stop", func(w http.ResponseWriter, r *http.Request){
+		handlers.CancelHandler(w, r, e)
+	})
+
+	//УДАЛИТЬ
+	http.HandleFunc("/cheat", func(w http.ResponseWriter, r *http.Request) {
+		handlers.CheatHandler(w, r, e)
+	})
 
 	http.ListenAndServe(":9091", nil)
 }

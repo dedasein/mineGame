@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"MINE/enterprice"
+	"MINE/types"
 	"fmt"
 	"net/http"
 )
@@ -11,6 +12,10 @@ func ActiveMinerHanlde(w http.ResponseWriter, r *http.Request, e *enterprice.Ent
 		http.Error(w, "Method not allowed!", http.StatusMethodNotAllowed)
 		return
 	}
+
+	sort := r.URL.Query().Get("sort")
+	fmt.Println(sort)
+
 	result := e.PrintActiveMiners()
 
 	if len(result) == 0 {
@@ -18,14 +23,17 @@ func ActiveMinerHanlde(w http.ResponseWriter, r *http.Request, e *enterprice.Ent
 	} else {
 		for id, miner := range result {
 			info := miner.Info()
-			msg := fmt.Sprintf(
-				"ID: %d | Type: %s | EnergyLeft: %d\n",
-				id, info.MinerType, info.EnergyLeft)
-			w.Write([]byte(msg))
+			if sort == "" || info.MinerType == sort {
+				makeMessage(w, info, id)
+			}
 		}
-
 	}
 }
 
-
-//- Можно получить список всех работающих в данный момент, отфильтровав по классу query параметры!
+func makeMessage(w http.ResponseWriter, info types.MinerInfo, id int64) string {
+	msg := fmt.Sprintf(
+		"ID: %d | Type: %s | EnergyLeft: %d\n",
+		id, info.MinerType, info.EnergyLeft)
+	w.Write([]byte(msg))
+	return msg
+}

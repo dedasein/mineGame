@@ -2,11 +2,10 @@ package handlers
 
 import (
 	"MINE/enterprice"
-	"context"
 	"net/http"
 )
 
-func CancelHandler(cancel context.CancelFunc, w http.ResponseWriter, e *enterprice.Enterprice) {
+func CancelHandler(w http.ResponseWriter, r *http.Request, e *enterprice.Enterprice) {
 	e.Cancel()
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Enterprice has been successfully shut down."))
