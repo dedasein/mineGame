@@ -120,7 +120,7 @@ func (e *Enterprice) addMiner(m types.Miner) {
 }
 
 // Покупка оборудования
-func (e *Enterprice) PurshareEquipment(s string) error {
+func (e *Enterprice) PurshareEquipment(s string, shutdownChan chan struct{}) error {
 	equipment := []*types.Equipment{types.NewPickaxes(), types.NewVentilation(), types.NewCars()}
 
 	//Проверка уникальности
@@ -143,6 +143,9 @@ func (e *Enterprice) PurshareEquipment(s string) error {
 				if len(e.pursharedEuqipment) == len(equipment) {
 					e.Cancel()
 					fmt.Println("All the equipment has been purchased, and the enterprice has been shut down ")
+					go func() {
+		shutdownChan <- struct{}{}
+	}()
 					return nil
 				}
 				return nil

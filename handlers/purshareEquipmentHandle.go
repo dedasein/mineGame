@@ -7,7 +7,7 @@ import (
 )
 
 
-func PurshareEquipmentHandle(w http.ResponseWriter, r *http.Request, e *enterprice.Enterprice) {
+func PurshareEquipmentHandle(w http.ResponseWriter, r *http.Request, e *enterprice.Enterprice, shutdownChan chan struct{}) {
 	if r.Method != http.MethodPost{
 		http.Error(w, "Method not allowed!", http.StatusMethodNotAllowed)
 		return
@@ -19,7 +19,7 @@ func PurshareEquipmentHandle(w http.ResponseWriter, r *http.Request, e *enterpri
 		return
 	}
 
-	if err := e.PurshareEquipment(string(response)); err != nil {
+	if err := e.PurshareEquipment(string(response), shutdownChan); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(err.Error()))	
 		return
